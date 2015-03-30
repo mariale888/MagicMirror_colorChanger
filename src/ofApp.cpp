@@ -9,7 +9,7 @@ void ofApp::setup(){
     
     ofSetFrameRate(60);
     
-    image.loadImage("img2.jpg");
+    image.loadImage("img1.jpg");
     image.resize(640, 480);
     
     //----
@@ -39,6 +39,7 @@ void ofApp::setup(){
     shader.load("colorChange.vert", "colorChange.frag");
     setNumColors();
 
+    /*
     //--------
     // set kinect
     // enable depth->video image calibration
@@ -50,36 +51,70 @@ void ofApp::setup(){
     
     kinect.open();		// opens first available kinect
     
-    // print the intrinsic IR sensor values
-    if(kinect.isConnected()) {
-        ofLogNotice() << "sensor-emitter dist: " << kinect.getSensorEmitterDistance() << "cm";
-        ofLogNotice() << "sensor-camera dist:  " << kinect.getSensorCameraDistance() << "cm";
-        ofLogNotice() << "zero plane pixel size: " << kinect.getZeroPlanePixelSize() << "mm";
-        ofLogNotice() << "zero plane dist: " << kinect.getZeroPlaneDistance() << "mm";
-    }
     
     colorImg.allocate(kinect.width, kinect.height);
     grayImage.allocate(kinect.width, kinect.height);
     grayThreshNear.allocate(kinect.width, kinect.height);
     grayThreshFar.allocate(kinect.width, kinect.height);
     
+   // kinect.setCameraTiltAngle(angle);
+    tex.allocate(grayImage.getPixelsRef());
+    tex.setRGToRGBASwizzles(true);
+    tex1.allocate(colorImg.getPixelsRef());
+    */
+    
+    
+    //-------
+    // Setting Kinect OpenNI
+    numDevices = openNIDevices[0].getNumDevices();
+    
+    for (int deviceID = 0; deviceID < numDevices; deviceID++){
+        //openNIDevices[deviceID].setLogLevel(OF_LOG_VERBOSE); // ofxOpenNI defaults to ofLogLevel, but you can force to any level
+        openNIDevices[deviceID].setup();
+        openNIDevices[deviceID].addDepthGenerator();
+        openNIDevices[deviceID].addImageGenerator();
+        openNIDevices[deviceID].addUserGenerator();
+        openNIDevices[deviceID].setRegister(true);
+        openNIDevices[deviceID].setMirror(true);
+        openNIDevices[deviceID].start();
+    }
+    
+    // NB: Only one device can have a user generator at a time - this is a known bug in NITE due to a singleton issue
+    // so it's safe to assume that the fist device to ask (ie., deviceID == 0) will have the user generator...
+    
+    openNIDevices[0].setMaxNumUsers(1); // defualt is 4
+    ofAddListener(openNIDevices[0].userEvent, this, &ofApp::userEvent);
+    
+    ofxOpenNIUser user;
+    user.setUseMaskTexture(true);
+    user.setUsePointCloud(true);
+    user.setPointCloudDrawSize(2); // this is the size of the glPoint that will be drawn for the point cloud
+    user.setPointCloudResolution(2); // this is the step size between points for the cloud -> eg., this sets it to every second point
+    openNIDevices[0].setBaseUserClass(user); // this becomes the base class on which tracked users are created
+
+    
+    //---- 
     nearThreshold = 230;
     farThreshold = 70;
     bThreshWithOpenCV = true;
     
     // zero the tilt on startup
     angle = 0;
-  
-    kinect.setCameraTiltAngle(angle);
-    tex.allocate(grayImage.getPixelsRef());
-    tex.setRGToRGBASwizzles(true);
-    tex1.allocate(colorImg.getPixelsRef());
-    
+
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
+   
+    //OpenNI
+    ofBackground(0, 0, 0);
+    for (int deviceID = 0; deviceID < numDevices; deviceID++){
+        openNIDevices[deviceID].update();
+    }
+
     
+   /*
+    Kinect
     ofBackground(100, 100, 100);
     
     kinect.update();
@@ -121,7 +156,7 @@ void ofApp::update(){
         // find contours which are between the size of 20 pixels and 1/3 the w*h pixels.
         // also, find holes is set to true so we will get interior contours as well....
         contourFinderKinect.findContours(grayImage, 10, (kinect.width*kinect.height)/2, 20, false);
-    }
+    }*/
 }
 
 //--------------------------------------------------------------
@@ -140,10 +175,7 @@ void ofApp::draw(){
     shader.begin();
     
     // get mouse position relative to center of screen
-   // float mousePosition = ofMap(mouseX, 0, ofGetWidth(), image.getWidth(), -image.getWidth(), true);
-    
-    
-    //shader.setUniform1f("hueAdjust", 200);
+    shader.setUniform1f("hueAdjust", 200);
     ofPushMatrix();
     image.draw(0,0);
     ofPopMatrix();
@@ -248,7 +280,7 @@ void ofApp::draw(){
     
     //----
     //kinect:
-    ofSetColor(255, 255, 255);
+  /* ofSetColor(255, 255, 255);
     tex1.draw(10, 10, 400, 300);
     //kinect.drawDepth(10, 10, 400, 300);
     kinect.draw(420, 10, 400, 300);
@@ -259,7 +291,24 @@ void ofApp::draw(){
     ofScale(grayImage.getWidth()/400.0 - 0.975, grayImage.getHeight() / 300 - 0.975);
     
     contourFinderKinect.draw(10, 320, 400, 300);
-    ofPopMatrix();
+    ofPopMatrix();*/
+    
+    //------
+    // Kinect OpenNI
+    ofSetColor(255, 255, 255);
+    
+    ofPushMatrix();
+    
+    for (int deviceID = 0; deviceID < numDevices; deviceID++){
+        ofTranslate(0, deviceID * 480);
+        openNIDevices[deviceID].drawDebug(); // debug draw does the equicalent of the commented methods below
+        openNIDevices[deviceID].drawDepth(0, 0, 640, 480);
+        openNIDevices[deviceID].drawImage(640, 0, 640, 480);
+        openNIDevices[deviceID].drawSkeletons(640, 0, 640, 480);
+        
+    }
+  ofPopMatrix();
+    
 }
 
 // Function that determines if we need to reduce the amount of orignal colors we are looking for
@@ -414,6 +463,13 @@ bool ofApp::collisionCheckEllipses(Point2f center1, float radius1X, float radius
 }
 
 //--------------------------------------------------------------
+void ofApp::userEvent(ofxOpenNIUserEvent & event){
+    cout << getUserStatusAsString(event.userStatus) << "for user" << event.id << "from device" << event.deviceID<<endl;
+    
+    ofLogNotice() << getUserStatusAsString(event.userStatus) << "for user" << event.id << "from device" << event.deviceID;
+}
+
+//--------------------------------------------------------------
 void ofApp::guiEvent(ofxUIEventArgs &e)
 {
 }
@@ -481,8 +537,11 @@ void ofApp::dragEvent(ofDragInfo dragInfo){
 }
 //--------------------------------------------------------------
 void ofApp::exit() {
-    kinect.setCameraTiltAngle(0); // zero the tilt on exit
-    kinect.close();
-    
+   // kinect.setCameraTiltAngle(0); // zero the tilt on exit
+  //  kinect.close();
+    for (int deviceID = 0; deviceID < numDevices; deviceID++){
+        openNIDevices[deviceID].stop();
+    }
+
 
 }

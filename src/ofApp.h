@@ -1,11 +1,14 @@
 #pragma once
 
+#include "ofxOpenNI.h"
 #include "ofMain.h"
 #include "ofxUI.h"
 #include "ofxCv.h"
 #include "ofxOpenCv.h"
 #include "ofxColorQuantizer.h"
-#include "ofxKinect.h"
+//#include "ofxKinect.h"
+
+#define MAX_DEVICES 2
 
 class ofApp : public ofBaseApp{
 
@@ -52,15 +55,23 @@ class ofApp : public ofBaseApp{
     cv::RotatedRect getEllipes(int index);
     
     //kinect stuff
-    ofxKinect kinect;
+   /* ofxKinect kinect;
     ofxCvColorImage colorImg;
     ofxCvGrayscaleImage grayImage; // grayscale depth image
     ofxCvGrayscaleImage grayThreshNear; // the near thresholded image
     ofxCvGrayscaleImage grayThreshFar; // the far thresholded image
     ofTexture tex;
-    ofTexture tex1;
+    ofTexture tex1;*/
     ofxCvContourFinder contourFinderKinect;
+  
     
+    //Kinect OpenNI
+    int numDevices;
+    ofxOpenNI openNIDevices[MAX_DEVICES];
+    ofTrueTypeFont verdana;
+    void userEvent(ofxOpenNIUserEvent & event);
+
+    //-------
     bool bThreshWithOpenCV;
     bool bDrawPointCloud;
     
