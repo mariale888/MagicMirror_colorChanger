@@ -27,14 +27,16 @@ private:
     float disThreshold;
     //float imgThreshold;
     ofColor targetColor;
-    float thresholdIndex[MAX_IMG_THRESH_];
+    //float thresholdIndex[MAX_IMG_THRESH_];
     ofxColorQuantizer colorQuantizer;
     vector<cv::RotatedRect> points;
     
     vector<int> colorThreshod;
    
     ofImage image;
-  
+    ofImage selectedImg;
+    bool isSelected;
+    
     void setNumColors();
     void setContourColor(bool isSet, int index);
     int removeSimColor(int i, int j);
@@ -47,10 +49,12 @@ public:
     
     // Functions
     void setImage(ofPixels pix);
+    void selectCurrent();
     void setContourColor();
     float getImgThreshold();
     int getCurColor();
     ofImage getImg();
+    
     
     void draw();
     void update(bool set);
@@ -64,7 +68,6 @@ public:
     bool collisionCheckEllipses(cv::Point2f center1, float radius1X, float radius1Y, cv::Point2f center2, float radius2X, float radius2Y);
     cv::RotatedRect getEllipes(int index);
     
-
     
 };
 #endif

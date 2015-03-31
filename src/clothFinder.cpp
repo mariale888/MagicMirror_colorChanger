@@ -18,8 +18,9 @@ using namespace cv;
 // Main class setUp
 void clothFinder::setUp(int numColors_,ofPixels img)
 {
-    imgSet = false;
+    imgSet      = false;
     isFirstTime = true;
+    isSelected  = false;
     numColors = numColors_;
     image.setFromPixels(img);
     //----
@@ -36,10 +37,10 @@ void clothFinder::setUp(int numColors_,ofPixels img)
     showDebug     = true;
     
     disThreshold = 50;
-    thresholdIndex[0] = image.getWidth() * 0.25;//5 - 10;
-    thresholdIndex[1] = image.getWidth() * 0.35;
-    thresholdIndex[2] = image.getWidth() * 0.5;
-    thresholdIndex[3] = image.getWidth() * 0.55;
+//    thresholdIndex[0] = image.getWidth() * 0.25;//5 - 10;
+//    thresholdIndex[1] = image.getWidth() * 0.35;
+//    thresholdIndex[2] = image.getWidth() * 0.5;
+//    thresholdIndex[3] = image.getWidth() * 0.55;
     
     // every color could have a different threshold to find the contour
     for(int i=0;i<numColors; i++){
@@ -304,6 +305,15 @@ bool clothFinder::collisionCheckEllipses(Point2f center1, float radius1X, float 
     return ((center1.x - center2.x)*(center1.x - center2.x) * bsquare + (center1.y - center2.y) * (center1.y - center2.y) * asquare) < (asquare * bsquare);
 }
 
+
+//--------------------------------------
+//Functions to construct img that goint to shader
+// construnct img of ONLY what is inside of cur contour
+void clothFinder::selectCurrent()
+{
+    isSelected = true;
+}
+
 //-------------------------------------
 // Main loop - draw/update
 void clothFinder::draw()
@@ -398,7 +408,71 @@ void clothFinder::draw()
         
         ofPopMatrix();
     }
-       
+    
+    
+    if(isSelected)
+    {
+         ofSetColor(255);
+        int size = contourFinder.size();
+        
+        for (int i=0; i<size; i++)
+        {
+            
+            cv::Rect boundRect = contourFinder.getBoundingRect(i);
+            
+            //create new binary Mat that has the blob's contours as a white image
+            cv::Mat contourMat = Mat::zeros(boundRect.height,boundRect.width,CV_8UC3);
+            Scalar color(255,255,255);
+            cv::Point offset(-contourFinder.getBoundingRect(i).x,-contourFinder.getBoundingRect(i).y);
+            drawContours(contourMat, contourFinder.getContours(), i, color, CV_FILLED, 8, noArray(), 0, offset);
+            drawMat(contourMat, boundRect.width + 20, 0);
+            
+            cv::Mat rgbMat = ofxCv::toCv(image.getPixelsRef());
+            //create rgb Mat with the content of the blob's bounding rect
+             cv::Mat croppedMat = Mat(boundRect.height,boundRect.width,CV_8UC3);
+             Mat croppedRgbMat(rgbMat,boundRect);
+             resize(croppedRgbMat, croppedMat);
+             drawMat(croppedMat, 0, 0);
+             
+             //create RGB Mat that only contains blob's RGB pixles
+             cv::Mat maskedMat = Mat::zeros(boundRect.height,boundRect.width,CV_8UC3);
+             croppedMat.copyTo(maskedMat,contourMat);
+             drawMat(maskedMat, 0, boundRect.height + 20);
+             
+             
+             //create RGBA Mat that has the contourMat as it's 4th channel (is not yet alpha)
+             cv::Mat maskedRgbaMat(boundRect.height,boundRect.width,CV_8UC4); //,Scalar(1,2,3,4));
+             Mat in[] = { maskedMat, contourMat };
+             // rgb[0] -> rgba[0], rgb[1] -> rgba[1], rgb[2] -> rgba[2], alpha[0] -> rgba[3]
+             int from_to[] = { 0,0, 1,1, 2,2,3,3 };
+             mixChannels( in, 2, &maskedRgbaMat, 1, from_to, 4 );
+             //drawMat(maskedRgbaMat, boundRect.width + 20, boundRect.height + 20);
+             
+             //create ofImage to make 4th channel the alpha; i.e. transparents
+             ofImage maskedRgbaImg;
+             ofxCv::toOf(maskedRgbaMat, maskedRgbaImg);
+             maskedRgbaImg.setImageType(OF_IMAGE_COLOR_ALPHA);
+             
+             ofEnableAlphaBlending();
+             maskedRgbaImg.draw((boundRect.width + 20)*2, boundRect.height + 20);
+             ofDisableAlphaBlending();
+             
+             
+             //   blur(right_roi, right_roi, edgeBlur);
+             
+             //create combine Mat that has rgb blob and contour blob info beside one an other
+             cv::Rect targetRect = cv::Rect(0,0,boundRect.width,boundRect.height);
+             cv::Rect targetRect2 = cv::Rect(boundRect.width,0,boundRect.width,boundRect.height);
+             Mat combine = Mat::zeros(boundRect.height,boundRect.width *2,CV_8UC3);
+             Mat left_roi(combine, targetRect);
+             maskedMat.copyTo(left_roi);
+             Mat right_roi(combine,targetRect2);
+             contourMat.copyTo(right_roi);
+             drawMat(combine,0, (boundRect.height+20)*2);
+            
+        }  
+
+    }
 }
 
 void clothFinder::update(bool set)

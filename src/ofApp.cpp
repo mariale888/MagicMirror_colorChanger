@@ -172,13 +172,16 @@ void ofApp::keyPressed(int key){
 
     if(key == 'd')
         mmirror.showDebug = !mmirror.showDebug;
+    // next color
     if(key == 'c')
         mmirror.setContourColor();
+    // select cur color to change
+    if(key == 'a')
+        mmirror.selectCurrent();
     if(key == 'p'){
          float threshold = ofMap(mouseX, 0, ofGetWidth(), 0, 255);
         cout<<"mm "<<threshold<<endl;
         cout<< mmirror.getImgThreshold()<<endl;
-        
     }
 }
 
