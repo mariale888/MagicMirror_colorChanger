@@ -4,9 +4,10 @@
 
 // this is how we receive the texture thanks to bind()
 uniform sampler2DRect inputTexture;
-in vec2 varyingtexcoord;
+uniform sampler2DRect mask;
 in vec2 texCoordVarying;
 uniform float hueAdjust;
+
 
 out vec4 outputColor; // anything marked "out" foes to next step in pipeline
 
@@ -23,7 +24,9 @@ void main()
     const vec4  kYIQToB  = vec4 (1.0, -1.107, 1.704, 0.0);
     
     // Sample the input pixel
-    vec4 color   = texture(inputTexture, texCoordVarying);
+
+    vec4 color = texture(inputTexture, texCoordVarying);
+    vec4 color1 = texture(mask, texCoordVarying);
     
     // Convert to YIQ
     float YPrime  = dot (color, kRGBToYPrime);
@@ -47,8 +50,10 @@ void main()
         color.r = dot (yIQ, kYIQToR);
         color.g = dot (yIQ, kYIQToG);
         color.b = dot (yIQ, kYIQToB);
+       
     }
-    
+    else color =vec4(color1.r,color1.g,color1.b,1);
+   
     // Save the result
     outputColor = color;
   

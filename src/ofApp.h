@@ -52,5 +52,5 @@ class ofApp : public ofBaseApp{
     void setUpGUI();
     void guiEvent(ofxUIEventArgs &e);
 
-		
+  
 };

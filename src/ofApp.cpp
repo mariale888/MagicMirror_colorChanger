@@ -123,14 +123,21 @@ void ofApp::draw(){
         {
             colorImg.draw(640, 0, 640, 480);
             openNIDevice.drawSkeletons(640, 0, 640, 480);
-            drawShader();
+            if(mmirror.getIsSet())
+                drawShader();
+            else
+                mmirror.getImg().draw(0,0);
         }
         else
             openNIDevice.drawImage(640, 0, 640, 480);
         ofPopMatrix();
     }
-    else
-        drawShader();
+    else{
+        if(mmirror.getIsSet())
+            drawShader();
+        else
+            mmirror.getImg().draw(0,0);
+    }
     
     //--------------------------
     //cloth finder - magic mirror
@@ -140,16 +147,30 @@ void ofApp::draw(){
 //function to exectue shader in mirror img
 void ofApp::drawShader()
 {
-    mmirror.getImg().getTextureReference().bind();
+    if(!mmirror.getSelectedImg().getTextureReference().isAllocated()) return;
+
+   
+    ofClear(255, 255, 255, 255);
+    
+  // mmirror.getImg().getTextureReference().bind();
+   // mmirror.getSelectedImg().getTextureReference().bind();
+
     shader.begin();
     // set hue value
     shader.setUniform1f("hueAdjust", 500);
-    ofPushMatrix();
-    mmirror.getImg().draw(0,0);
-    ofPopMatrix();
-    
+    shader.setUniformTexture("inputTexture", mmirror.getSelectedImg().getTextureReference(), 0);
+    shader.setUniformTexture("mask", image.getTextureReference(), 1);
+   // ofPushMatrix();
+    mmirror.getSelectedImg().draw(0,0);
+   // mmirror.getImg().draw(0,0);
+    //ofPopMatrix();
+    //image.draw(0,0);
     shader.end();
-    mmirror.getImg().getTextureReference().unbind();
+    
+    //mmirror.getImg().getTextureReference().unbind();
+   // mmirror.getSelectedImg().getTextureReference().unbind();
+    
+   // mmirror.getImg().draw(0,0);
 }
 //--------------------------------------------------------------
 void ofApp::userEvent(ofxOpenNIUserEvent & event){

@@ -21,8 +21,13 @@ void clothFinder::setUp(int numColors_,ofPixels img)
     imgSet      = false;
     isFirstTime = true;
     isSelected  = false;
+    selectedSet = false;
+    
     numColors = numColors_;
     image.setFromPixels(img);
+    
+    //selectedImg.loadImage("img2.jpg");
+    
     //----
     // get our colors
     curColor  = 0;
@@ -419,27 +424,53 @@ void clothFinder::draw()
         {
             
             cv::Rect boundRect = contourFinder.getBoundingRect(i);
+            ofPixels color;
+            color.allocate(image.getWidth(),image.getHeight(), OF_PIXELS_RGB );
+            for(int x = 0; x < image.getWidth(); x++)
+            {
+                //if(x < boundRect.x) continue;
+               // if(x > (boundRect.x + boundRect.)
+                 for(int y= 0; y < image.getHeight(); y++)
+                 {
+                     if(boundRect.contains(cv::Point(x, y) ))
+                     {
+                          color.setColor(x, y,image.getColor(x, y));
+                     }
+                     else
+                         color.setColor(x, y,image.getColor(0, 0));
+                    
+                            
+                    
+                 }
+            }
+          
+            selectedImg.setFromPixels(color);
+            selectedSet = true;
+           /* cv::Rect img_Rec (0,238,image.getWidth(), image.getHeight());
             
             //create new binary Mat that has the blob's contours as a white image
             cv::Mat contourMat = Mat::zeros(boundRect.height,boundRect.width,CV_8UC3);
             Scalar color(255,255,255);
             cv::Point offset(-contourFinder.getBoundingRect(i).x,-contourFinder.getBoundingRect(i).y);
             drawContours(contourMat, contourFinder.getContours(), i, color, CV_FILLED, 8, noArray(), 0, offset);
-            drawMat(contourMat, boundRect.width + 20, 0);
+            //drawMat(contourMat, boundRect.width + 20, 0);
             
             cv::Mat rgbMat = ofxCv::toCv(image.getPixelsRef());
             //create rgb Mat with the content of the blob's bounding rect
              cv::Mat croppedMat = Mat(boundRect.height,boundRect.width,CV_8UC3);
              Mat croppedRgbMat(rgbMat,boundRect);
              resize(croppedRgbMat, croppedMat);
-             drawMat(croppedMat, 0, 0);
+             //drawMat(croppedMat, 0, 0);
              
              //create RGB Mat that only contains blob's RGB pixles
-             cv::Mat maskedMat = Mat::zeros(boundRect.height,boundRect.width,CV_8UC3);
+            cv::Mat maskedMat = Mat::zeros(boundRect.height,boundRect.width, CV_8UC3);//boundRect.height,boundRect.width,CV_8UC3);
              croppedMat.copyTo(maskedMat,contourMat);
-             drawMat(maskedMat, 0, boundRect.height + 20);
-             
-             
+             //drawMat(maskedMat, 0, boundRect.height + 20);
+            
+            ofxCv::toOf(maskedMat, selectedImg);
+            selectedSet = true;
+            */
+             /*
              //create RGBA Mat that has the contourMat as it's 4th channel (is not yet alpha)
              cv::Mat maskedRgbaMat(boundRect.height,boundRect.width,CV_8UC4); //,Scalar(1,2,3,4));
              Mat in[] = { maskedMat, contourMat };
@@ -467,11 +498,10 @@ void clothFinder::draw()
              Mat left_roi(combine, targetRect);
              maskedMat.copyTo(left_roi);
              Mat right_roi(combine,targetRect2);
-             contourMat.copyTo(right_roi);
-             drawMat(combine,0, (boundRect.height+20)*2);
+             contourMat.copyTo(right_roi);*/
+             //drawMat(combine,0, (boundRect.height+20)*2);
             
-        }  
-
+        }
     }
 }
 
@@ -494,17 +524,25 @@ void clothFinder::update(bool set)
 
 void clothFinder::mouseMoved(int x, int y )
 {
-    threshold = ofMap(x, 0, ofGetWidth(), 0, 255);
-    contourFinder.setThreshold(threshold);
-    contourFinder.findContours(image);
+   // threshold = ofMap(x, 0, ofGetWidth(), 0, 255);
+    //contourFinder.setThreshold(threshold);
+    //contourFinder.findContours(image);
 }
 
 //---------------
 // main getters
-
+bool clothFinder::getIsSet()
+{
+    return isSelected;
+}
 ofImage clothFinder::getImg()
 {
+
     return image;
+}
+ofImage clothFinder::getSelectedImg()
+{
+    return selectedImg;
 }
 float clothFinder::getImgThreshold()
 {

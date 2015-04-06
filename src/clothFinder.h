@@ -22,6 +22,7 @@ private:
     
     bool imgSet;
     bool isFirstTime;
+    bool selectedSet;
     int numColors;
     int curColor;
     float disThreshold;
@@ -53,8 +54,9 @@ public:
     void setContourColor();
     float getImgThreshold();
     int getCurColor();
+    bool getIsSet();
+    ofImage getSelectedImg();
     ofImage getImg();
-    
     
     void draw();
     void update(bool set);
