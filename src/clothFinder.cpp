@@ -36,10 +36,10 @@ void clothFinder::setUp(int numColors_,ofPixels img)
     
     //----
     //setup contourFinder
-    contourFinder.setMinAreaRadius(10); //100
+    contourFinder.setMinAreaRadius(10); //10
     contourFinder.setMaxAreaRadius(250); //250
     trackingColorMode = TRACK_COLOR_RGB;
-    showDebug     = true;
+    showDebug     = false;
     
     disThreshold = 50;
 //    thresholdIndex[0] = image.getWidth() * 0.25;//5 - 10;
@@ -48,11 +48,16 @@ void clothFinder::setUp(int numColors_,ofPixels img)
 //    thresholdIndex[3] = image.getWidth() * 0.55;
     
     // every color could have a different threshold to find the contour
-    for(int i=0;i<numColors; i++){
+    for(int i = 0; i < numColors; i++){
         colorThreshod.push_back(MIN_IMG_THRESH); // init to frist thresholdIndex
     }
     
     //imgThreshold =  thresholdIndex[0];
+    isRec = false;
+    recSize = 100;
+    posRec.x = 0;
+    posRec.y = 0;
+    isLine = true;
 }
 
 //--------------------------------------------------------------
@@ -62,9 +67,10 @@ void clothFinder::setUp(int numColors_,ofPixels img)
 void clothFinder::setNumColors()
 {
     cout<<"in setNumColors"<<endl;
-
+    colorQuantizer.quantize(image.getPixelsRef());
+    
     int colorCount = 1; // white backround
-    for(int i=0;i < colorQuantizer.getColors().size(); i++)
+    for(int i = 0; i < colorQuantizer.getColors().size(); i++)
     {
         setContourColor(false, i);
         if(contourFinder.size() > 0)
@@ -82,7 +88,7 @@ void clothFinder::setNumColors()
         contourFinder.setTargetColor(targetColor, trackingColorMode);
     }
     //set img Threshold
-    setImgThreshold();
+    //setImgThreshold();
 }
 
 
@@ -202,11 +208,12 @@ void clothFinder::setImgThreshold()
           // increase imgThreshold: until no contour or half of img.
         
           setContourColor(false, j);
+          int csize = 22;// 6
           cout<<"h "<<colorThreshod[j] <<" "<<j<<" " <<contourFinder.size()<<endl;
-          while(contourFinder.size() < 6 && colorThreshod[j] < MAX_IMG_THRESH){
+          while(contourFinder.size() < csize && colorThreshod[j] < MAX_IMG_THRESH){
               //imgThreshold = thresholdIndex[index];
               colorThreshod[j] += 5;
-              cout<<"h "<<colorThreshod[j] <<" "<<j<<" " <<contourFinder.size()<<endl;
+              //cout<<"h "<<colorThreshod[j] <<" "<<j<<" " <<contourFinder.size()<<endl;
               setContourColor(false, j);
              
           }
@@ -266,7 +273,7 @@ void clothFinder::setContourColor(bool isSet, int index)
     if(isSet){
         curColor = (curColor + 1)%colorQuantizer.getColors().size();
         index = curColor;
-        cout<<"my thresh " <<index<<" "<<colorThreshod[index]<<endl;
+        //cout<<"my thresh " <<index<<" "<<colorThreshod[index]<<endl;
     }
     
     targetColor = colorQuantizer.getColors()[index];
@@ -317,6 +324,58 @@ bool clothFinder::collisionCheckEllipses(Point2f center1, float radius1X, float 
 void clothFinder::selectCurrent()
 {
     isSelected = true;
+}
+
+//-------------------------------------
+// constructing contour from polygins
+
+void clothFinder::setFromRec()
+{
+    isSelected = true;
+    
+    cv::Rect boundRect(posRec.x, posRec.y, recSize, recSize);
+    ofPixels color;
+    color.allocate(image.getWidth(),image.getHeight(), OF_PIXELS_RGB );
+    for(int x = 0; x < image.getWidth(); x++)
+    {
+        //if(x < boundRect.x) continue;
+        // if(x > (boundRect.x + boundRect.)
+        for(int y= 0; y < image.getHeight(); y++)
+        {
+            if(boundRect.contains(cv::Point(x, y) ))
+            {
+                color.setColor(x, y,image.getColor(x, y));
+            }
+            else
+                color.setColor(x, y,image.getColor(0, 0));
+        }
+    }
+    
+    selectedImg.setFromPixels(color);
+}
+
+void clothFinder::setFromLine()
+{
+    isSelected = true;
+    
+    ofPixels color;
+    color.allocate(image.getWidth(),image.getHeight(), OF_PIXELS_RGB );
+    for(int x = 0; x < image.getWidth(); x++)
+    {
+        //if(x < boundRect.x) continue;
+        // if(x > (boundRect.x + boundRect.)
+        for(int y= 0; y < image.getHeight(); y++)
+        {
+            if(line.inside(x, y))
+            {
+                color.setColor(x, y,image.getColor(x, y));
+            }
+            else
+                color.setColor(x, y,image.getColor(0, 0));
+        }
+    }
+    
+    selectedImg.setFromPixels(color);
 }
 
 //-------------------------------------
@@ -415,7 +474,7 @@ void clothFinder::draw()
     }
     
     
-    if(isSelected)
+    if(isSelected && !isRec && !isLine)
     {
          ofSetColor(255);
         int size = contourFinder.size();
@@ -503,6 +562,13 @@ void clothFinder::draw()
             
         }
     }
+    
+   ofNoFill();
+     ofSetLineWidth(6);
+    ofSetColor(cyanPrint);
+    ofRect(posRec.x, posRec.y, recSize, recSize);
+    line.draw();
+    ofFill();
 }
 
 void clothFinder::update(bool set)
@@ -519,14 +585,22 @@ void clothFinder::update(bool set)
         }
         else if(image.bAllocated())
             contourFinder.findContours(image);
+    
+        if(isSelected && isRec)
+             setFromRec();
+        if(isSelected && isLine)
+            setFromLine();
     }
 }
 
 void clothFinder::mouseMoved(int x, int y )
 {
-   // threshold = ofMap(x, 0, ofGetWidth(), 0, 255);
+    //threshold = ofMap(x, 0, ofGetWidth(), 0, 255);
     //contourFinder.setThreshold(threshold);
     //contourFinder.findContours(image);
+    
+    posRec.x = x;
+    posRec.y = y;
 }
 
 //---------------

@@ -30,9 +30,13 @@ class ofApp : public ofBaseApp{
     
     //-------
     bool useKinect;
+    bool usetTimer;
+    float timer;
+    float timerStart;
+    
     ofImage image;
     ofTexture colorImg;
-    ofTexture grayImg;
+   // ofTexture grayImg;
     ofShader shader;
     bool imgProcessed;
     clothFinder mmirror;
@@ -43,7 +47,11 @@ class ofApp : public ofBaseApp{
     ofTrueTypeFont verdana;
     void userEvent(ofxOpenNIUserEvent & event);
 
-   
+//------
+    void setShirt(ofxOpenNIUser & user );
+    
+    
+    
     
     // used for viewing the point cloud
     ofEasyCam easyCam;

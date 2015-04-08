@@ -9,9 +9,13 @@ void ofApp::setup(){
     
     ofSetFrameRate(60);
    
-    image.loadImage("img3.jpg");
+    image.loadImage("img_me.jpg");
+    image.resize(600,780);//640, 832);
    // image.resize(640, 480);
-    useKinect = false;
+    useKinect = true;
+    usetTimer = false;
+    timer           = 1000;
+    timerStart      = timer;
     
     //----
     // get our colors
@@ -23,8 +27,9 @@ void ofApp::setup(){
     
     //-------
     // Setting Kinect OpenNI
-    //openNIDevices[deviceID].setLogLevel(OF_LOG_VERBOSE); // ofxOpenNI defaults to ofLogLevel, but you can force to any level
+  
     if(useKinect){
+      //openNIDevices[deviceID].setLogLevel(OF_LOG_VERBOSE); // ofxOpenNI defaults to ofLogLevel, but you can force to any level
         openNIDevice.setup();
         openNIDevice.addDepthGenerator();
         openNIDevice.addImageGenerator();
@@ -46,12 +51,13 @@ void ofApp::setup(){
         user.setPointCloudResolution(2); // this is the step size between points for the cloud -> eg., this sets it to every second point
         openNIDevice.setBaseUserClass(user); // this becomes the base class on which tracked users are created
         colorImg.allocate(openNIDevice.getImagePixels());
-        grayImg.allocate(openNIDevice.getDepthPixels());
-        grayImg.setRGToRGBASwizzles(true);
+       // grayImg.allocate(openNIDevice.getDepthPixels());
+        //grayImg.setRGToRGBASwizzles(true);
         
+       
         //----
         // cloth finder - magic mirros
-         mmirror.setUp(4, openNIDevice.getImagePixels());
+         mmirror.setUp(10, openNIDevice.getImagePixels());
     }
     else
         mmirror.setUp(6, image.getPixelsRef());
@@ -70,11 +76,14 @@ void ofApp::update(){
         if(numUsers > 0)
         {
             ofxOpenNIUser & user = openNIDevice.getTrackedUser(0);
-           
+           //set shirt
+            setShirt(user );
+            //-----
             ofPixels depth =  user.getMaskPixels();
-            grayImg.loadData(depth);
+           // grayImg.loadData(depth);
             ofPixels color;
             color.allocate(openNIDevice.getWidth(),openNIDevice.getHeight(),OF_PIXELS_RGB );
+           
             for(int x = 0; x  < openNIDevice.getWidth() ;x++){
                 for(int y = 0; y < openNIDevice.getHeight(); y++ )
                 {
@@ -84,16 +93,18 @@ void ofApp::update(){
                         color.setColor(x, y,openNIDevice.getImagePixels().getColor(x, y));
                     }
                     else
-                        color.setColor(x, y,depth.getColor(x,y));
+                        color.setColor(x, y, ofColor::white); //depth.getColor(x,y));
                 }
             }
             //setting color images with background removal
             colorImg.loadData(color);
             mmirror.setImage(color);
-            imgProcessed = true;
+            image.setFromPixels(color);
+           // imgProcessed = true;
         }
         else
         {
+            mmirror.line.clear();
            // image.setFromPixels(openNIDevice.getImagePixels());
             imgProcessed = false;
         }
@@ -104,6 +115,21 @@ void ofApp::update(){
     //-------
     // cloth finder - magic mirror
     mmirror.update(imgProcessed);
+    
+    
+    if(usetTimer)
+    {
+        timerStart -= ofGetElapsedTimef();
+        if(timerStart < 0 )
+        {
+            timerStart = timer;
+            if(imgProcessed){
+                mmirror.setContourColor();
+                 //mmirror.selectCurrent();
+            }
+            //cout<<"change in timer"<<endl;
+        }
+    }
     
 }
 
@@ -121,15 +147,15 @@ void ofApp::draw(){
         int numUsers = openNIDevice.getNumTrackedUsers();
         if( numUsers > 0)
         {
-            colorImg.draw(640, 0, 640, 480);
-            openNIDevice.drawSkeletons(640, 0, 640, 480);
+           // colorImg.draw(640, 0, 640, 480);
+            //openNIDevice.drawSkeletons(640, 0, 640, 480);
             if(mmirror.getIsSet())
                 drawShader();
             else
                 mmirror.getImg().draw(0,0);
         }
         else
-            openNIDevice.drawImage(640, 0, 640, 480);
+            openNIDevice.drawImage(0, 0, 640, 480);
         ofPopMatrix();
     }
     else{
@@ -152,7 +178,7 @@ void ofApp::drawShader()
    
     ofClear(255, 255, 255, 255);
     
-  // mmirror.getImg().getTextureReference().bind();
+   // mmirror.getImg().getTextureReference().bind();
    // mmirror.getSelectedImg().getTextureReference().bind();
 
     shader.begin();
@@ -164,13 +190,11 @@ void ofApp::drawShader()
     mmirror.getSelectedImg().draw(0,0);
    // mmirror.getImg().draw(0,0);
     //ofPopMatrix();
-    //image.draw(0,0);
     shader.end();
     
     //mmirror.getImg().getTextureReference().unbind();
    // mmirror.getSelectedImg().getTextureReference().unbind();
     
-   // mmirror.getImg().draw(0,0);
 }
 //--------------------------------------------------------------
 void ofApp::userEvent(ofxOpenNIUserEvent & event){
@@ -179,6 +203,30 @@ void ofApp::userEvent(ofxOpenNIUserEvent & event){
     ofLogNotice() << getUserStatusAsString(event.userStatus) << "for user" << event.id << "from device" << event.deviceID;
 }
 
+void ofApp::setShirt(ofxOpenNIUser & user )
+{
+    mmirror.line.clear();
+  
+    mmirror.line.addVertex( user.getJoint(JOINT_LEFT_SHOULDER).getProjectivePosition().x,user.getJoint(JOINT_LEFT_SHOULDER).getProjectivePosition().y );
+    mmirror.line.addVertex( user.getJoint(JOINT_LEFT_ELBOW).getProjectivePosition().x,user.getJoint(JOINT_LEFT_ELBOW).getProjectivePosition().y);
+    mmirror.line.addVertex( user.getJoint(JOINT_LEFT_HAND).getProjectivePosition().x,user.getJoint(JOINT_LEFT_HAND).getProjectivePosition().y );
+   // mmirror.line.addVertex( user.getJoint(JOINT_LEFT_ELBOW).getProjectivePosition().x, user.getJoint(JOINT_LEFT_ELBOW).getProjectivePosition().y );
+   // mmirror.line.addVertex( user.getJoint(JOINT_LEFT_SHOULDER).getProjectivePosition() );
+    
+    mmirror.line.addVertex( user.getJoint(JOINT_LEFT_HIP).getProjectivePosition().x, user.getJoint(JOINT_LEFT_HIP).getProjectivePosition().y );
+    mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_HIP).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_HIP).getProjectivePosition().y );
+    
+    mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_HAND).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_HAND).getProjectivePosition().y );
+    mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_ELBOW).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_ELBOW).getProjectivePosition().y );
+    mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_SHOULDER).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_SHOULDER).getProjectivePosition().y );
+    //mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_HAND).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_HAND).getProjectivePosition().y );
+    //mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_ELBOW).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_ELBOW).getProjectivePosition().y );
+   // mmirror.line.addVertex( user.getJoint(JOINT_RIGHT_SHOULDER).getProjectivePosition().x, user.getJoint(JOINT_RIGHT_SHOULDER).getProjectivePosition().y );
+   
+    mmirror.line.close();
+    mmirror.setFromLine();
+    
+}
 //--------------------------------------------------------------
 void ofApp::guiEvent(ofxUIEventArgs &e)
 {
@@ -199,6 +247,12 @@ void ofApp::keyPressed(int key){
     // select cur color to change
     if(key == 'a')
         mmirror.selectCurrent();
+    if(key == 'r')
+        mmirror.setFromRec();
+    if(key == 'f') {
+        mmirror.line.close();
+        mmirror.setFromLine();
+    }
     if(key == 'p'){
          float threshold = ofMap(mouseX, 0, ofGetWidth(), 0, 255);
         cout<<"mm "<<threshold<<endl;
@@ -227,6 +281,7 @@ void ofApp::mousePressed(int x, int y, int button){
    // targetColor = image.getColor(x, y);
     //contourFinder.setTargetColor(targetColor, trackingColorMode);
     
+    mmirror.line.addVertex(ofPoint(x, y));
 }
 
 //--------------------------------------------------------------

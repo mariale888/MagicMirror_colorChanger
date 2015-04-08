@@ -13,8 +13,8 @@
 #include "ofxColorQuantizer.h"
 
 #define MAX_IMG_THRESH_ 4
-#define MAX_IMG_THRESH 130
-#define MIN_IMG_THRESH 30
+#define MAX_IMG_THRESH 550 //130
+#define MIN_IMG_THRESH 200 //30
 
 class clothFinder
 {
@@ -37,12 +37,17 @@ private:
     ofImage image;
     ofImage selectedImg;
     bool isSelected;
+    bool isRec;
+    bool isLine;
     
     void setNumColors();
     void setContourColor(bool isSet, int index);
     int removeSimColor(int i, int j);
     void setImgThreshold();
 
+    int recSize;
+    ofVec2f posRec;
+    
 public:
     
     // Constructor
@@ -62,6 +67,8 @@ public:
     void update(bool set);
     void mouseMoved(int x, int y );
     
+    void setFromRec();
+    void setFromLine();
     // VARS
     float threshold;
     bool showDebug;
@@ -71,5 +78,6 @@ public:
     cv::RotatedRect getEllipes(int index);
     
     
+    ofPolyline line;
 };
 #endif
